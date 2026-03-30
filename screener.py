@@ -89,6 +89,7 @@ def run_screener(tickers, limit=20):
             entry = get_entry_price(df)
 
             latest_price = round(df['Close'].iloc[-1], 2)
+
             diff_pct = ((latest_price - entry) / entry) * 100
 
             # Signals
@@ -103,11 +104,15 @@ def run_screener(tickers, limit=20):
             else:
                 signal = "AVOID 🔴"
 
-            # New metrics
+            # Metrics
             confidence = calculate_confidence(score, diff_pct)
             risk = calculate_risk(df)
             stop_loss, target = calculate_trade_levels(entry, df)
             explanation = generate_explanation(score, diff_pct, df)
+
+            # 52-week range
+            week_52_high = round(df['High'].rolling(252).max().iloc[-1], 2)
+            week_52_low = round(df['Low'].rolling(252).min().iloc[-1], 2)
 
             results.append({
                 "ticker": ticker,
@@ -119,6 +124,8 @@ def run_screener(tickers, limit=20):
                 "risk": risk,
                 "stop_loss": stop_loss,
                 "target": target,
+                "52w_high": week_52_high,
+                "52w_low": week_52_low,
                 "explanation": explanation
             })
 
