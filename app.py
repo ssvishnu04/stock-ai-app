@@ -23,7 +23,7 @@ st.markdown("""
 """)
 
 # ---------------------------
-# MODE + VIEW TOGGLE
+# MODE + VIEW
 # ---------------------------
 col1, col2 = st.columns(2)
 
@@ -40,12 +40,12 @@ with col2:
     )
 
 # ---------------------------
-# DATA SOURCE
+# DATA
 # ---------------------------
 tickers = get_most_active()
 
 # ---------------------------
-# RUN BUTTON
+# RUN ANALYSIS
 # ---------------------------
 if st.button("🚀 Run Analysis"):
 
@@ -70,9 +70,7 @@ if st.button("🚀 Run Analysis"):
             "Explanation"
         ]
 
-        # ---------------------------
         # % Difference
-        # ---------------------------
         df["% Difference"] = (
             (df["Current Price"] - df["Entry Price"]) / df["Entry Price"]
         ) * 100
@@ -105,7 +103,7 @@ if st.button("🚀 Run Analysis"):
             best = df.iloc[0]
 
             # ---------------------------
-            # 🔥 BEST PICK (MOBILE FRIENDLY)
+            # BEST PICK
             # ---------------------------
             st.markdown("## 🔥 Best Trade Opportunity")
 
@@ -130,13 +128,10 @@ if st.button("🚀 Run Analysis"):
 """)
 
             # ---------------------------
-            # VIEW SWITCH
+            # STOCK DISPLAY
             # ---------------------------
             st.markdown("## 📊 Stock Signals")
 
-            # ---------------------------
-            # 📱 MOBILE CARD VIEW
-            # ---------------------------
             if view_mode == "📱 Mobile Cards":
                 for _, row in df.iterrows():
                     st.markdown("---")
@@ -156,19 +151,23 @@ if st.button("🚀 Run Analysis"):
                     st.write(f"⚠️ Risk: {row['Risk']}")
                     st.write(f"🧠 {row['Explanation']}")
 
-            # ---------------------------
-            # 📋 TABLE VIEW (DESKTOP)
-            # ---------------------------
             else:
                 display_df = df.drop(columns=["Priority"])
                 st.dataframe(display_df, use_container_width=True)
 
             # ---------------------------
-            # 📈 CHART
+            # 🔥 SELECTABLE CHART (FIX)
             # ---------------------------
-            st.markdown(f"## 📈 Chart: {best['Ticker']}")
+            st.markdown("## 📈 Select Stock for Chart")
 
-            chart_data = yf.download(best['Ticker'], period="3mo", progress=False)
+            selected_ticker = st.selectbox(
+                "Choose a stock",
+                df["Ticker"].tolist()
+            )
+
+            st.markdown(f"## 📈 Chart: {selected_ticker}")
+
+            chart_data = yf.download(selected_ticker, period="3mo", progress=False)
 
             if not chart_data.empty:
                 st.line_chart(chart_data['Close'], height=300)
