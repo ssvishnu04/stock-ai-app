@@ -5,190 +5,110 @@ import yfinance as yf
 from screener import run_screener
 from market import get_most_active
 
-# ---------------------------
-# PAGE CONFIG
-# ---------------------------
-st.set_page_config(
-    page_title="AI Stock Scanner",
-    page_icon="📈",
-    layout="wide"
-)
+st.set_page_config(page_title="AI Stock Scanner", page_icon="📈", layout="wide")
 
-# ---------------------------
-# HEADER
-# ---------------------------
-st.markdown("""
-# 📊 Stock Signal Engine
-### AI Trading Assistant
-""")
+st.markdown("# 📊 Stock Signal Engine\n### AI Trading Assistant")
 
-# ---------------------------
-# MODE + VIEW
-# ---------------------------
 col1, col2 = st.columns(2)
 
 with col1:
-    option = st.selectbox(
-        "Select Mode",
-        ["🔥 Best Opportunities", "📊 All Signals"]
-    )
+    option = st.selectbox("Select Mode", ["🔥 Best Opportunities", "📊 All Signals"])
 
 with col2:
-    view_mode = st.selectbox(
-        "View Mode",
-        ["📱 Mobile Cards", "📋 Table"]
-    )
+    view_mode = st.selectbox("View Mode", ["📱 Mobile Cards", "📋 Table"])
 
-# ---------------------------
-# DATA SOURCE
-# ---------------------------
 tickers = get_most_active()
 
-# ---------------------------
-# RUN ANALYSIS (SAVE TO SESSION)
-# ---------------------------
+# Run Analysis
 if st.button("🚀 Run Analysis"):
     with st.spinner("Analyzing stocks..."):
         st.session_state.results = run_screener(tickers, limit=25)
 
-# ---------------------------
-# LOAD RESULTS FROM SESSION
-# ---------------------------
+# Load results
 if "results" in st.session_state:
 
     df = pd.DataFrame(st.session_state.results)
 
+    df.columns = [
+        "Ticker", "Score", "Entry Price", "Current Price", "Signal",
+        "Confidence", "Risk", "Stop Loss", "Target Price",
+        "52W High", "52W Low", "Explanation"
+    ]
+
+    df["% Difference"] = ((df["Current Price"] - df["Entry Price"]) / df["Entry Price"]) * 100
+    df["% Difference"] = df["% Difference"].round(2)
+
+    signal_priority = {
+        "STRONG BUY 🟢🔥": 5,
+        "BUY 🟢": 4,
+        "HOLD 🟡": 3,
+        "WAIT 🟡": 2,
+        "AVOID 🔴": 1
+    }
+
+    df["Priority"] = df["Signal"].map(signal_priority)
+    df = df.sort_values(by=["Priority", "Score"], ascending=[False, False])
+
+    if option == "🔥 Best Opportunities":
+        df = df[df["Signal"].str.contains("BUY")]
+
     if not df.empty:
 
-        df.columns = [
-            "Ticker",
-            "Score",
-            "Entry Price",
-            "Current Price",
-            "Signal",
-            "Confidence",
-            "Risk",
-            "Stop Loss",
-            "Target Price",
-            "Explanation"
-        ]
+        best = df.iloc[0]
 
-        # ---------------------------
-        # % DIFFERENCE
-        # ---------------------------
-        df["% Difference"] = (
-            (df["Current Price"] - df["Entry Price"]) / df["Entry Price"]
-        ) * 100
-        df["% Difference"] = df["% Difference"].round(2)
+        st.markdown("## 🔥 Best Trade Opportunity")
 
-        # ---------------------------
-        # SIGNAL PRIORITY
-        # ---------------------------
-        signal_priority = {
-            "STRONG BUY 🟢🔥": 5,
-            "BUY 🟢": 4,
-            "HOLD 🟡": 3,
-            "WAIT 🟡": 2,
-            "AVOID 🔴": 1
-        }
+        col1, col2 = st.columns(2)
+        col1.metric("Ticker", best["Ticker"])
+        col1.metric("Signal", best["Signal"])
+        col2.metric("Entry", f"${best['Entry Price']}")
+        col2.metric("Current", f"${best['Current Price']}")
 
-        df["Priority"] = df["Signal"].map(signal_priority)
-
-        df = df.sort_values(by=["Priority", "Score"], ascending=[False, False])
-
-        # ---------------------------
-        # FILTER
-        # ---------------------------
-        if option == "🔥 Best Opportunities":
-            df = df[df["Signal"].str.contains("BUY")]
-
-        if df.empty:
-            st.warning("No BUY signals found.")
-        else:
-            best = df.iloc[0]
-
-            # ---------------------------
-            # BEST PICK
-            # ---------------------------
-            st.markdown("## 🔥 Best Trade Opportunity")
-
-            col1, col2 = st.columns(2)
-
-            with col1:
-                st.metric("Ticker", best["Ticker"])
-                st.metric("Signal", best["Signal"])
-
-            with col2:
-                st.metric("Entry", f"${best['Entry Price']}")
-                st.metric("Current", f"${best['Current Price']}")
-
-            st.markdown(f"""
+        st.markdown(f"""
 **🎯 Target:** ${best['Target Price']}  
 **🛑 Stop Loss:** ${best['Stop Loss']}  
 
 **📊 Confidence:** {best['Confidence']}%  
 **⚠️ Risk:** {best['Risk']}  
 
-**🧠 Why:** {best['Explanation']}
+**📈 52W High:** ${best['52W High']}  
+**📉 52W Low:** ${best['52W Low']}  
+
+**🧠 {best['Explanation']}
 """)
 
-            # ---------------------------
-            # STOCK DISPLAY
-            # ---------------------------
-            st.markdown("## 📊 Stock Signals")
+        st.markdown("## 📊 Stock Signals")
 
-            if view_mode == "📱 Mobile Cards":
-                for _, row in df.iterrows():
-                    st.markdown("---")
-                    st.markdown(f"### {row['Ticker']} — {row['Signal']}")
+        if view_mode == "📱 Mobile Cards":
+            for _, row in df.iterrows():
+                st.markdown("---")
+                st.markdown(f"### {row['Ticker']} — {row['Signal']}")
+                st.write(f"Entry: ${row['Entry Price']} | Current: ${row['Current Price']}")
+                st.write(f"Target: ${row['Target Price']} | Stop: ${row['Stop Loss']}")
+                st.write(f"Confidence: {row['Confidence']}% | Risk: {row['Risk']}")
+                st.write(f"52W High: ${row['52W High']} | 52W Low: ${row['52W Low']}")
+                st.write(f"{row['Explanation']}")
+        else:
+            st.dataframe(df.drop(columns=["Priority"]), use_container_width=True)
 
-                    col1, col2 = st.columns(2)
+        # Clickable tickers
+        st.markdown("## 📈 Click a Ticker")
 
-                    with col1:
-                        st.write(f"💰 Entry: ${row['Entry Price']}")
-                        st.write(f"📈 Current: ${row['Current Price']}")
+        if "selected_ticker" not in st.session_state:
+            st.session_state.selected_ticker = df.iloc[0]["Ticker"]
 
-                    with col2:
-                        st.write(f"🎯 Target: ${row['Target Price']}")
-                        st.write(f"🛑 Stop: ${row['Stop Loss']}")
+        cols = st.columns(4)
 
-                    st.write(f"📊 Confidence: {row['Confidence']}%")
-                    st.write(f"⚠️ Risk: {row['Risk']}")
-                    st.write(f"🧠 {row['Explanation']}")
+        for i, ticker in enumerate(df["Ticker"].tolist()):
+            label = f"✅ {ticker}" if ticker == st.session_state.selected_ticker else ticker
+            if cols[i % 4].button(label):
+                st.session_state.selected_ticker = ticker
 
-            else:
-                display_df = df.drop(columns=["Priority"])
-                st.dataframe(display_df, use_container_width=True)
+        selected_ticker = st.session_state.selected_ticker
 
-            # ---------------------------
-            # CLICKABLE TICKERS (NO RESET)
-            # ---------------------------
-            st.markdown("## 📈 Click a Ticker to View Chart")
+        st.markdown(f"## 📈 Chart: {selected_ticker}")
 
-            if "selected_ticker" not in st.session_state:
-                st.session_state.selected_ticker = df.iloc[0]["Ticker"]
+        chart_data = yf.download(selected_ticker, period="3mo", progress=False)
 
-            cols = st.columns(4)
-
-            for i, ticker in enumerate(df["Ticker"].tolist()):
-                label = f"✅ {ticker}" if ticker == st.session_state.selected_ticker else ticker
-
-                if cols[i % 4].button(label):
-                    st.session_state.selected_ticker = ticker
-
-            selected_ticker = st.session_state.selected_ticker
-
-            # ---------------------------
-            # CHART
-            # ---------------------------
-            st.markdown(f"## 📈 Chart: {selected_ticker}")
-
-            chart_data = yf.download(selected_ticker, period="3mo", progress=False)
-
-            if not chart_data.empty:
-                st.line_chart(chart_data["Close"], height=300)
-            else:
-                st.warning("Chart data not available.")
-
-else:
-    st.info("👉 Click 'Run Analysis' to start scanning stocks.")
+        if not chart_data.empty:
+            st.line_chart(chart_data["Close"], height=300)
