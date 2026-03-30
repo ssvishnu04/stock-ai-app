@@ -5,21 +5,49 @@ import yfinance as yf
 from screener import run_screener
 from market import get_most_active
 
-st.set_page_config(page_title="Stock AI App", layout="wide")
-
-st.title("📊 Stock Signal Engine")
-st.write("AI-powered trading assistant with risk & confidence insights")
-
-option = st.selectbox(
-    "Select Mode",
-    ["🔥 Best Opportunities", "📊 All Signals"]
+# ---------------------------
+# Page Config
+# ---------------------------
+st.set_page_config(
+    page_title="AI Stock Scanner",
+    page_icon="📈",
+    layout="wide"
 )
 
+# ---------------------------
+# HEADER
+# ---------------------------
+st.markdown("""
+# 📊 Stock Signal Engine
+### AI Trading Assistant
+""")
+
+# ---------------------------
+# MODE + VIEW TOGGLE
+# ---------------------------
+col1, col2 = st.columns(2)
+
+with col1:
+    option = st.selectbox(
+        "Select Mode",
+        ["🔥 Best Opportunities", "📊 All Signals"]
+    )
+
+with col2:
+    view_mode = st.selectbox(
+        "View Mode",
+        ["📱 Mobile Cards", "📋 Table"]
+    )
+
+# ---------------------------
+# DATA SOURCE
+# ---------------------------
 tickers = get_most_active()
 
-st.write(f"Scanning {len(tickers)} active stocks...")
-
-if st.button("Run Analysis"):
+# ---------------------------
+# RUN BUTTON
+# ---------------------------
+if st.button("🚀 Run Analysis"):
 
     with st.spinner("Analyzing stocks..."):
         results = run_screener(tickers, limit=25)
@@ -42,13 +70,17 @@ if st.button("Run Analysis"):
             "Explanation"
         ]
 
+        # ---------------------------
         # % Difference
+        # ---------------------------
         df["% Difference"] = (
             (df["Current Price"] - df["Entry Price"]) / df["Entry Price"]
         ) * 100
         df["% Difference"] = df["% Difference"].round(2)
 
-        # Priority ranking
+        # ---------------------------
+        # SIGNAL PRIORITY
+        # ---------------------------
         signal_priority = {
             "STRONG BUY 🟢🔥": 5,
             "BUY 🟢": 4,
@@ -61,6 +93,9 @@ if st.button("Run Analysis"):
 
         df = df.sort_values(by=["Priority", "Score"], ascending=[False, False])
 
+        # ---------------------------
+        # FILTER
+        # ---------------------------
         if option == "🔥 Best Opportunities":
             df = df[df["Signal"].str.contains("BUY")]
 
@@ -69,24 +104,73 @@ if st.button("Run Analysis"):
         else:
             best = df.iloc[0]
 
-            st.success(
-                f"🔥 BEST PICK: {best['Ticker']} | {best['Signal']}\n\n"
-                f"Entry: ${best['Entry Price']} | Current: ${best['Current Price']}\n"
-                f"🎯 Target: ${best['Target Price']} | 🛑 Stop: ${best['Stop Loss']}\n"
-                f"📊 Confidence: {best['Confidence']}% | ⚠️ Risk: {best['Risk']}\n\n"
-                f"🧠 {best['Explanation']}"
-            )
+            # ---------------------------
+            # 🔥 BEST PICK (MOBILE FRIENDLY)
+            # ---------------------------
+            st.markdown("## 🔥 Best Trade Opportunity")
 
-            # Clean display
-            display_df = df.drop(columns=["Priority"])
+            col1, col2 = st.columns(2)
 
-            st.subheader("📋 Stock Rankings")
-            st.dataframe(display_df, use_container_width=True)
+            with col1:
+                st.metric("Ticker", best["Ticker"])
+                st.metric("Signal", best["Signal"])
 
-            # Chart
-            st.subheader(f"📈 Chart: {best['Ticker']}")
+            with col2:
+                st.metric("Entry", f"${best['Entry Price']}")
+                st.metric("Current", f"${best['Current Price']}")
+
+            st.markdown(f"""
+**🎯 Target:** ${best['Target Price']}  
+**🛑 Stop Loss:** ${best['Stop Loss']}  
+
+**📊 Confidence:** {best['Confidence']}%  
+**⚠️ Risk:** {best['Risk']}  
+
+**🧠 Why:** {best['Explanation']}
+""")
+
+            # ---------------------------
+            # VIEW SWITCH
+            # ---------------------------
+            st.markdown("## 📊 Stock Signals")
+
+            # ---------------------------
+            # 📱 MOBILE CARD VIEW
+            # ---------------------------
+            if view_mode == "📱 Mobile Cards":
+                for _, row in df.iterrows():
+                    st.markdown("---")
+                    st.markdown(f"### {row['Ticker']} — {row['Signal']}")
+
+                    col1, col2 = st.columns(2)
+
+                    with col1:
+                        st.write(f"💰 Entry: ${row['Entry Price']}")
+                        st.write(f"📈 Current: ${row['Current Price']}")
+
+                    with col2:
+                        st.write(f"🎯 Target: ${row['Target Price']}")
+                        st.write(f"🛑 Stop: ${row['Stop Loss']}")
+
+                    st.write(f"📊 Confidence: {row['Confidence']}%")
+                    st.write(f"⚠️ Risk: {row['Risk']}")
+                    st.write(f"🧠 {row['Explanation']}")
+
+            # ---------------------------
+            # 📋 TABLE VIEW (DESKTOP)
+            # ---------------------------
+            else:
+                display_df = df.drop(columns=["Priority"])
+                st.dataframe(display_df, use_container_width=True)
+
+            # ---------------------------
+            # 📈 CHART
+            # ---------------------------
+            st.markdown(f"## 📈 Chart: {best['Ticker']}")
 
             chart_data = yf.download(best['Ticker'], period="3mo", progress=False)
 
             if not chart_data.empty:
-                st.line_chart(chart_data['Close'])
+                st.line_chart(chart_data['Close'], height=300)
+            else:
+                st.warning("Chart data not available.")
