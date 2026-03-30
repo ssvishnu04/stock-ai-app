@@ -45,18 +45,21 @@ with col2:
 tickers = get_most_active()
 
 # ---------------------------
-# RUN ANALYSIS
+# RUN ANALYSIS (SAVE TO SESSION)
 # ---------------------------
 if st.button("🚀 Run Analysis"):
-
     with st.spinner("Analyzing stocks..."):
-        results = run_screener(tickers, limit=25)
+        st.session_state.results = run_screener(tickers, limit=25)
 
-    df = pd.DataFrame(results)
+# ---------------------------
+# LOAD RESULTS FROM SESSION
+# ---------------------------
+if "results" in st.session_state:
 
-    if df.empty:
-        st.warning("No results found.")
-    else:
+    df = pd.DataFrame(st.session_state.results)
+
+    if not df.empty:
+
         df.columns = [
             "Ticker",
             "Score",
@@ -105,7 +108,7 @@ if st.button("🚀 Run Analysis"):
             best = df.iloc[0]
 
             # ---------------------------
-            # 🔥 BEST PICK
+            # BEST PICK
             # ---------------------------
             st.markdown("## 🔥 Best Trade Opportunity")
 
@@ -130,7 +133,7 @@ if st.button("🚀 Run Analysis"):
 """)
 
             # ---------------------------
-            # 📊 STOCK DISPLAY
+            # STOCK DISPLAY
             # ---------------------------
             st.markdown("## 📊 Stock Signals")
 
@@ -158,7 +161,7 @@ if st.button("🚀 Run Analysis"):
                 st.dataframe(display_df, use_container_width=True)
 
             # ---------------------------
-            # 🔥 CLICKABLE TICKERS (NO DROPDOWN)
+            # CLICKABLE TICKERS (NO RESET)
             # ---------------------------
             st.markdown("## 📈 Click a Ticker to View Chart")
 
@@ -176,13 +179,16 @@ if st.button("🚀 Run Analysis"):
             selected_ticker = st.session_state.selected_ticker
 
             # ---------------------------
-            # 📈 CHART
+            # CHART
             # ---------------------------
             st.markdown(f"## 📈 Chart: {selected_ticker}")
 
             chart_data = yf.download(selected_ticker, period="3mo", progress=False)
 
             if not chart_data.empty:
-                st.line_chart(chart_data['Close'], height=300)
+                st.line_chart(chart_data["Close"], height=300)
             else:
                 st.warning("Chart data not available.")
+
+else:
+    st.info("👉 Click 'Run Analysis' to start scanning stocks.")
