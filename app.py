@@ -6,7 +6,7 @@ from screener import run_screener
 from market import get_most_active
 
 # ---------------------------
-# Page Config
+# PAGE CONFIG
 # ---------------------------
 st.set_page_config(
     page_title="AI Stock Scanner",
@@ -40,7 +40,7 @@ with col2:
     )
 
 # ---------------------------
-# DATA
+# DATA SOURCE
 # ---------------------------
 tickers = get_most_active()
 
@@ -70,7 +70,9 @@ if st.button("🚀 Run Analysis"):
             "Explanation"
         ]
 
-        # % Difference
+        # ---------------------------
+        # % DIFFERENCE
+        # ---------------------------
         df["% Difference"] = (
             (df["Current Price"] - df["Entry Price"]) / df["Entry Price"]
         ) * 100
@@ -103,7 +105,7 @@ if st.button("🚀 Run Analysis"):
             best = df.iloc[0]
 
             # ---------------------------
-            # BEST PICK
+            # 🔥 BEST PICK
             # ---------------------------
             st.markdown("## 🔥 Best Trade Opportunity")
 
@@ -128,7 +130,7 @@ if st.button("🚀 Run Analysis"):
 """)
 
             # ---------------------------
-            # STOCK DISPLAY
+            # 📊 STOCK DISPLAY
             # ---------------------------
             st.markdown("## 📊 Stock Signals")
 
@@ -156,15 +158,26 @@ if st.button("🚀 Run Analysis"):
                 st.dataframe(display_df, use_container_width=True)
 
             # ---------------------------
-            # 🔥 SELECTABLE CHART (FIX)
+            # 🔥 CLICKABLE TICKERS (NO DROPDOWN)
             # ---------------------------
-            st.markdown("## 📈 Select Stock for Chart")
+            st.markdown("## 📈 Click a Ticker to View Chart")
 
-            selected_ticker = st.selectbox(
-                "Choose a stock",
-                df["Ticker"].tolist()
-            )
+            if "selected_ticker" not in st.session_state:
+                st.session_state.selected_ticker = df.iloc[0]["Ticker"]
 
+            cols = st.columns(4)
+
+            for i, ticker in enumerate(df["Ticker"].tolist()):
+                label = f"✅ {ticker}" if ticker == st.session_state.selected_ticker else ticker
+
+                if cols[i % 4].button(label):
+                    st.session_state.selected_ticker = ticker
+
+            selected_ticker = st.session_state.selected_ticker
+
+            # ---------------------------
+            # 📈 CHART
+            # ---------------------------
             st.markdown(f"## 📈 Chart: {selected_ticker}")
 
             chart_data = yf.download(selected_ticker, period="3mo", progress=False)
